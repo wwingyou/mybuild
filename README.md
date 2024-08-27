@@ -1,6 +1,6 @@
 # mybuild
 
-This is a java build tool made only for me. haha.
+This is a java build tool made only for me.
 
 ## Usage
 
