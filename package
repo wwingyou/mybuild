@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# [OPTIONS]
+# --main-class or -mc <class-name> : Defines main class file.
+
+while [ "$1" != "" ]; do
+  if [ "$1" == "--main-class" -o "$1" == "-mc" ]; then
+    shift
+    optmc="--main-class $1"
+  else
+    module=$1
+  fi
+  shift
+done
+
+echo "[INFO] packaging module '$module'"
+
+files=$(find src/$module -name *.java)
+javac -s src/$module -d target/classes/$module $files
+
+if [ $? -ne 0 ]; then
+  echo "[ERROR] compile failed." >&2
+  exit 1
+fi
+
+echo "[INFO] compilation completed."
+
+jar --create --file target/$module.jar $optmc -C target/classes/$module .
+
+echo "[INFO] archiving completed."
