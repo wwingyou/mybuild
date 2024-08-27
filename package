@@ -1,30 +1,71 @@
 #!/bin/bash
 
 # [OPTIONS]
-# --main-class or -mc <class-name> : Defines main class file.
+# --main-class or -mc <class>       : Set main class
+# --war or -w                       : Package as war
+
+optwar=0
 
 while [ "$1" != "" ]; do
   if [ "$1" == "--main-class" -o "$1" == "-mc" ]; then
     shift
     optmc="--main-class $1"
+  elif [ "$1" == "--war" -o "$1" == "-w" ]; then
+    optwar=1
+  elif [[ "$1" == -* ]]; then
+    echo "[ERROR] unknown option '$1'" >&2
+    exit 3
   else
     module=$1
+    break
   fi
   shift
 done
 
+if [ "$module" == "" ]; then
+  echo "[ERROR] module name must be given." >&2
+  echo "Usage: package <module>"
+  exit 2
+fi
+
 echo "[INFO] packaging module '$module'"
 
-files=$(find src/$module -name *.java)
-javac -s src/$module -d target/classes/$module $files
+if [ $optwar -eq 0 ]; then
+  echo "[INFO] packaging jar"
+  classpath=target/classes/$module
+  root=target/classes/$module
+  ext=jar
+else
+  echo "[INFO] packaging war"
+  classpath=target/webapp/$module/WEB-INF/classes
+  root=target/webapp/$module
+  ext=war
+
+  webapp_dir=src/$module/webapp
+  if [ ! -d $webapp_dir ]; then
+    echo "[ERROR] webapp directory does not exsists." >&2
+    exit 4
+  fi
+
+  mkdir -p $root
+  cp -R src/$module/webapp/ $root
+fi
+
+java_files=$(find src/$module/java -name *.java)
+javac -d $classpath $java_files
+
+resources_dir=src/$module/resources
+if [ -d $resources_dir ]; then
+  cp -R $resources_dir/ $classpath
+fi
 
 if [ $? -ne 0 ]; then
-  echo "[ERROR] compile failed." >&2
+  echo "[ERROR] compilation failed." >&2
   exit 1
 fi
 
 echo "[INFO] compilation completed."
 
-jar --create --file target/$module.jar $optmc -C target/classes/$module .
+jar --create --file target/$module.$ext $optmc -C $root .
 
 echo "[INFO] archiving completed."
