@@ -3,8 +3,17 @@
 # [OPTIONS]
 # --main-class or -mc <class>       : Set main class
 # --war or -w                       : Package as war
+# --verbose or -v                   : Print all logs
 
 optwar=0
+optverbose=0
+
+verbose_print() {
+  if [ $optverbose -ne 0 ]; then
+    echo $1
+  fi
+}
+
 
 while [ "$1" != "" ]; do
   if [ "$1" == "--main-class" -o "$1" == "-mc" ]; then
@@ -12,6 +21,8 @@ while [ "$1" != "" ]; do
     optmc="--main-class $1"
   elif [ "$1" == "--war" -o "$1" == "-w" ]; then
     optwar=1
+  elif [ "$1" == "--verbose" -o "$1" == "-v" ]; then
+    optverbose=1
   elif [[ "$1" == -* ]]; then
     echo "[ERROR] unknown option '$1'" >&2
     exit 3
@@ -28,15 +39,15 @@ if [ "$module" == "" ]; then
   exit 2
 fi
 
-echo "[INFO] packaging module '$module'"
+verbose_print "[INFO] packaging module '$module'"
 
 if [ $optwar -eq 0 ]; then
-  echo "[INFO] packaging jar"
+  verbose_print "[INFO] packaging jar"
   classpath=target/classes/$module
   root=target/classes/$module
   ext=jar
 else
-  echo "[INFO] packaging war"
+  verbose_print "[INFO] packaging war"
   classpath=target/webapp/$module/WEB-INF/classes
   root=target/webapp/$module
   ext=war
@@ -64,8 +75,8 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "[INFO] compilation completed."
+verbose_print "[INFO] compilation completed."
 
 jar --create --file target/$module.$ext $optmc -C $root .
 
-echo "[INFO] archiving completed."
+verbose_print "[INFO] archiving completed."
