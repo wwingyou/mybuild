@@ -37,7 +37,7 @@ If you build this project, what you will get is like this:
 │   │   ├── Servlet.class
 │   │   └── application.properties
 │   ├── lib
-│   │   └── depenency.jar
+│   │   └── dependency.jar
 │   └── template.jsp
 └── index.html
 ```
