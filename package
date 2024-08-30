@@ -43,7 +43,7 @@ while [ "$1" != "" ]; do
   elif [ "$1" == "--verbose" -o "$1" == "-v" ]; then
     optverbose=1
   elif [[ "$1" == -* ]]; then
-    echo "[ERROR] unknown option '$1'" >&2
+    error "unknown option '$1'"
     exit 3
   else
     module=$1
@@ -53,27 +53,27 @@ while [ "$1" != "" ]; do
 done
 
 if [ "$module" == "" ]; then
-  echo "[ERROR] module name must be given." >&2
+  error "module name must be given."
   echo "Usage: package <module>"
   exit 2
 fi
 
-info "[INFO] packaging module '$module'"
+info "packaging module '$module'"
 
 if [ $optwar -eq 0 ]; then
-  info "[INFO] packaging jar"
+  info "packaging jar"
   classpath=target/classes/$module
   root=target/classes/$module
   ext=jar
 else
-  info "[INFO] packaging war"
+  info "packaging war"
   classpath=target/webapp/$module/WEB-INF/classes
   root=target/webapp/$module
   ext=war
 
   webapp_dir=src/$module/webapp
   if [ ! -d $webapp_dir ]; then
-    echo "[ERROR] webapp directory does not exsists." >&2
+    error "webapp directory does not exsists."
     exit 4
   fi
 
@@ -120,12 +120,12 @@ if [ -d $resources_dir ]; then
 fi
 
 if [ $? -ne 0 ]; then
-  echo "[ERROR] compilation failed." >&2
+  error "compilation failed."
   exit 1
 fi
 
-info "[INFO] compilation completed."
+info "compilation completed."
 
 jar --create --file target/$module.$ext $optmc -C $root .
 
-info "[INFO] archiving completed."
+info "archiving completed."
