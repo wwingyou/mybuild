@@ -29,9 +29,9 @@ error() {
 }
 
 parse_dependency() {
-  dep_group=$(xmlstarlet sel -t -v "dependency/dependencies[$1]/groupId")
-  dep_artifact=$(xmlstarlet sel -t -v "dependency/dependencies[$1]/artifactId")
-  dep_version=$(xmlstarlet sel -t -v "dependency/dependencies[$1]/version")
+  dep_group=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/groupId" dependencies.xml)
+  dep_artifact=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/artifactId" dependencies.xml)
+  dep_version=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/version" dependencies.xml)
 }
 
 while [ "$1" != "" ]; do
@@ -81,7 +81,7 @@ else
   cp -R src/$module/webapp/ $root
 fi
 
-if [ -e "dependency.xml" ]; then
+if [ -e "dependencies.xml" ]; then
   index=1
 
   parse_dependency $index
@@ -93,9 +93,11 @@ if [ -e "dependency.xml" ]; then
     info "dep_file: $dep_file"
 
     if [ ! -e $dep_dir/$dep_file ]; then
-      mkdir -p dep_dir
+      mkdir -p $dep_dir
       download_url="https://repo1.maven.org/maven2/$dep_group_path/$dep_artifact/$dep_version/$dep_file"
-      wget -o $dir/$dep_file $download_url
+      info "download_url: $download_url"
+      info "download_file: $dep_dir/$dep_file"
+      wget -O "$dep_dir/$dep_file" "$download_url"
 
       if [ $? -eq 8 ]; then
         error "Dependency not found: '$download_url'"
@@ -104,6 +106,7 @@ if [ -e "dependency.xml" ]; then
     fi
 
     ((index++))
+    parse_dependency $index
   done
 
 fi
