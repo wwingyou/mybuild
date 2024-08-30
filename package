@@ -4,16 +4,35 @@
 # --main-class or -mc <class>       : Set main class
 # --war or -w                       : Package as war
 # --verbose or -v                   : Print all logs
+#
+# [EXIT CODES]
+# 0     : Success
+# 1     : Compile Error
+# 2     : Invalid Argument
+# 3     : Unknown Option
+# 4     : Invalid Dependency
 
 optwar=0
 optverbose=0
+dep_group=""
+dep_artifact=""
+dep_version=""
 
-verbose_print() {
+info() {
   if [ $optverbose -ne 0 ]; then
-    echo $1
+    echo "[INFO] $1"
   fi
 }
 
+error() {
+  echo "[ERROR] $1" >&2
+}
+
+parse_dependency() {
+  dep_group=$(xmlstarlet sel -t -v "dependency/dependencies[$1]/groupId")
+  dep_artifact=$(xmlstarlet sel -t -v "dependency/dependencies[$1]/artifactId")
+  dep_version=$(xmlstarlet sel -t -v "dependency/dependencies[$1]/version")
+}
 
 while [ "$1" != "" ]; do
   if [ "$1" == "--main-class" -o "$1" == "-mc" ]; then
@@ -39,15 +58,15 @@ if [ "$module" == "" ]; then
   exit 2
 fi
 
-verbose_print "[INFO] packaging module '$module'"
+info "[INFO] packaging module '$module'"
 
 if [ $optwar -eq 0 ]; then
-  verbose_print "[INFO] packaging jar"
+  info "[INFO] packaging jar"
   classpath=target/classes/$module
   root=target/classes/$module
   ext=jar
 else
-  verbose_print "[INFO] packaging war"
+  info "[INFO] packaging war"
   classpath=target/webapp/$module/WEB-INF/classes
   root=target/webapp/$module
   ext=war
@@ -60,6 +79,33 @@ else
 
   mkdir -p $root
   cp -R src/$module/webapp/ $root
+fi
+
+if [ -e "dependency.xml" ]; then
+  index=1
+
+  parse_dependency $index
+  while [ "$dep_group" != "" ]; do
+    dep_group_path=${dep_group//.//}
+    dep_dir="repository/$dep_group_path/$dep_artifact/$dep_version"
+    dep_file="$dep_artifact-$dep_version.jar"
+    info "dep_dir: $dep_dir"
+    info "dep_file: $dep_file"
+
+    if [ ! -e $dep_dir/$dep_file ]; then
+      mkdir -p dep_dir
+      download_url="https://repo1.maven.org/maven2/$dep_group_path/$dep_artifact/$dep_version/$dep_file"
+      wget -o $dir/$dep_file $download_url
+
+      if [ $? -eq 8 ]; then
+        error "Dependency not found: '$download_url'"
+        exit 5
+      fi
+    fi
+
+    ((index++))
+  done
+
 fi
 
 java_files=$(find src/$module/java -name *.java)
@@ -75,8 +121,8 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-verbose_print "[INFO] compilation completed."
+info "[INFO] compilation completed."
 
 jar --create --file target/$module.$ext $optmc -C $root .
 
-verbose_print "[INFO] archiving completed."
+info "[INFO] archiving completed."
