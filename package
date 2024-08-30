@@ -64,11 +64,13 @@ if [ $optwar -eq 0 ]; then
   info "packaging jar"
   classpath=target/classes/$module
   root=target/classes/$module
+  dep_root=target/lib/$module
   ext=jar
 else
   info "packaging war"
   classpath=target/webapp/$module/WEB-INF/classes
   root=target/webapp/$module
+  dep_root=target/webapp/$module/WEB-INF/lib
   ext=war
 
   webapp_dir=src/$module/webapp
@@ -81,7 +83,11 @@ else
   cp -R src/$module/webapp/ $root
 fi
 
+
+rm -rf $dep_root
+
 if [ -e "dependencies.xml" ]; then
+  mkdir -p $dep_root
   index=1
 
   parse_dependency $index
@@ -105,6 +111,8 @@ if [ -e "dependencies.xml" ]; then
       fi
     fi
 
+    cp $dep_dir/$dep_file $dep_root
+
     ((index++))
     parse_dependency $index
   done
@@ -112,7 +120,10 @@ if [ -e "dependencies.xml" ]; then
 fi
 
 java_files=$(find src/$module/java -name *.java)
-javac -d $classpath $java_files
+dep_files=$(find $dep_root -type f)
+dep_files=${dep_files//$'\n'/:}
+info "dep_files: $dep_files"
+javac -d $classpath -cp "$dep_files" $java_files
 
 resources_dir=src/$module/resources
 if [ -d $resources_dir ]; then
