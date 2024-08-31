@@ -116,8 +116,6 @@ if [ -e $dep_config ]; then
       info "dependency not found '$dep_dir/$dep_file'"
       mkdir -p $dep_dir
       download_url="https://repo1.maven.org/maven2/$dep_group_path/$dep_artifact/$dep_version/$dep_file"
-      info "download_url: $download_url"
-      info "download_file: $dep_dir/$dep_file"
       wget -O "$dep_dir/$dep_file" "$download_url"
 
       if [ $? -eq 8 ]; then
