@@ -17,6 +17,8 @@ optverbose=0
 dep_group=""
 dep_artifact=""
 dep_version=""
+dep_config=""
+temp=""
 
 info() {
   if [ $optverbose -ne 0 ]; then
@@ -29,9 +31,9 @@ error() {
 }
 
 parse_dependency() {
-  dep_group=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/groupId" dependencies.xml)
-  dep_artifact=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/artifactId" dependencies.xml)
-  dep_version=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/version" dependencies.xml)
+  dep_group=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/groupId" $dep_config)
+  dep_artifact=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/artifactId" $dep_config)
+  dep_version=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/version" $dep_config)
 }
 
 while [ "$1" != "" ]; do
@@ -64,7 +66,7 @@ if [ $optwar -eq 0 ]; then
   info "packaging jar"
   classpath=target/classes/$module
   root=target/classes/$module
-  dep_root=target/lib/$module
+  dep_root=repository
   ext=jar
 else
   info "packaging war"
@@ -84,9 +86,15 @@ else
 fi
 
 
-rm -rf $dep_root
+if [ $optwar -eq 1 ]; then
+  rm -rf $dep_root
+fi
 
-if [ -e "dependencies.xml" ]; then
+dep_config="src/$module/config/dependencies.xml"
+temp="target/temp/$module"
+mkdir -p $temp
+
+if [ -e $dep_config ]; then
   mkdir -p $dep_root
   index=1
 
@@ -98,7 +106,8 @@ if [ -e "dependencies.xml" ]; then
     info "dep_dir: $dep_dir"
     info "dep_file: $dep_file"
 
-    if [ ! -e $dep_dir/$dep_file ]; then
+    if [ ! -e "$dep_dir/$dep_file" ]; then
+      info "dependency not found '$dep_dir/$dep_file'"
       mkdir -p $dep_dir
       download_url="https://repo1.maven.org/maven2/$dep_group_path/$dep_artifact/$dep_version/$dep_file"
       info "download_url: $download_url"
@@ -111,12 +120,26 @@ if [ -e "dependencies.xml" ]; then
       fi
     fi
 
-    cp $dep_dir/$dep_file $dep_root
+    if [ $optwar -eq 1 ]; then
+      cp $dep_dir/$dep_file $dep_root
+    fi
 
     ((index++))
     parse_dependency $index
   done
+fi
 
+manifest=$temp/MANIFEST.MF
+if [ $optwar -eq 0 ]; then
+  touch $manifest
+  echo -n "Class-Path:" > $manifest
+
+  for dep in $(find $dep_root -type f); do
+    file=$(basename $dep)
+    echo -n " lib/$file" >> $manifest
+  done
+
+  echo "" >> $manifest
 fi
 
 java_files=$(find src/$module/java -name *.java)
@@ -137,6 +160,6 @@ fi
 
 info "compilation completed."
 
-jar --create --file target/$module.$ext $optmc -C $root .
+jar --create --file target/$module.$ext $optmc -m $manifest -C $root .
 
 info "archiving completed."

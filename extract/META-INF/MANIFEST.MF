@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Class-Path: lib/slf4j-api-2.0.16.jar
+Created-By: 11.0.24 (Amazon.com Inc.)
+Main-Class: com.example.Main
+
