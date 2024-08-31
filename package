@@ -36,6 +36,8 @@ parse_dependency() {
   dep_version=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/version" $dep_config)
 }
 
+
+# Get Options
 while [ "$1" != "" ]; do
   if [ "$1" == "--main-class" -o "$1" == "-mc" ]; then
     shift
@@ -54,6 +56,8 @@ while [ "$1" != "" ]; do
   shift
 done
 
+
+# Get Module Name
 if [ "$module" == "" ]; then
   error "module name must be given."
   echo "Usage: package <module>"
@@ -62,6 +66,8 @@ fi
 
 info "packaging module '$module'"
 
+
+# Set Pathes
 if [ $optwar -eq 0 ]; then
   info "packaging jar"
   classpath=target/classes/$module
@@ -90,9 +96,9 @@ if [ $optwar -eq 1 ]; then
   rm -rf $dep_root
 fi
 
+
+# Resolve Dependencies
 dep_config="src/$module/config/dependencies.xml"
-temp="target/temp/$module"
-mkdir -p $temp
 
 if [ -e $dep_config ]; then
   mkdir -p $dep_root
@@ -129,19 +135,8 @@ if [ -e $dep_config ]; then
   done
 fi
 
-manifest=$temp/MANIFEST.MF
-if [ $optwar -eq 0 ]; then
-  touch $manifest
-  echo -n "Class-Path:" > $manifest
 
-  for dep in $(find $dep_root -type f); do
-    file=$(basename $dep)
-    echo -n " lib/$file" >> $manifest
-  done
-
-  echo "" >> $manifest
-fi
-
+# Compilation
 java_files=$(find src/$module/java -name *.java)
 dep_files=$(find $dep_root -type f)
 dep_files=${dep_files//$'\n'/:}
@@ -160,6 +155,8 @@ fi
 
 info "compilation completed."
 
-jar --create --file target/$module.$ext $optmc -m $manifest -C $root .
+
+# Packaging
+jar --create --file target/$module.$ext $optmc -C $root .
 
 info "archiving completed."
