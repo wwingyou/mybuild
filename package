@@ -17,8 +17,14 @@ optverbose=0
 dep_group=""
 dep_artifact=""
 dep_version=""
+dep_scope=""
 dep_config=""
-temp=""
+dep_group_path=""
+dep_dir=""
+dep_jar=""
+dep_pom=""
+dep_download_root=""
+remote_repo="https://repo1.maven.org/maven2"
 
 info() {
   if [ $optverbose -ne 0 ]; then
@@ -31,9 +37,43 @@ error() {
 }
 
 parse_dependency() {
-  dep_group=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/groupId" $dep_config)
-  dep_artifact=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/artifactId" $dep_config)
-  dep_version=$(xmlstarlet sel -t -v "dependencies/dependency[$1]/version" $dep_config)
+  dep_group=$(xmlstarlet sel -t -v "$1/groupId" $2)
+  dep_artifact=$(xmlstarlet sel -t -v "$1/artifactId" $2)
+  dep_version=$(xmlstarlet sel -t -v "$1/version" $2)
+  dep_scope=$(xmlstarlet sel -t -v "$1/scope" $2)
+  dep_group_path=${dep_group//.//}
+  dep_dir="repository/$dep_group_path/$dep_artifact/$dep_version"
+  dep_jar="$dep_artifact-$dep_version.jar"
+  dep_pom="$dep_artifact-$dep_version.pom"
+  dep_download_root="$remote_repo/$dep_group_path/$dep_artifact/$dep_version"
+}
+
+keep() {
+  buf_dep_group=$dep_group
+  buf_dep_artifact=$dep_artifact
+  buf_dep_version=$dep_version
+  buf_dep_group_path=$dep_group_path
+  buf_dep_dir=$dep_dir
+  buf_dep_jar=$dep_jar
+  buf_dep_pom=$dep_pom
+  buf_dep_download_root=$dep_download_root
+}
+
+restore() {
+  dep_group=$buf_dep_group
+  dep_artifact=$buf_dep_artifact
+  dep_version=$buf_dep_version
+  dep_group_path=$buf_dep_group_path
+  dep_dir=$buf_dep_dir
+  dep_jar=$buf_dep_jar
+  dep_pom=$buf_dep_pom
+  dep_download_root=$buf_dep_download_root
+}
+
+load_props() {
+  keep
+  parse_dependency "project/parent" "$dep_dir/$dep_pom"
+  restore
 }
 
 
@@ -108,15 +148,17 @@ if [ -e $dep_config ]; then
   while [ "$dep_group" != "" ]; do
     dep_group_path=${dep_group//.//}
     dep_dir="repository/$dep_group_path/$dep_artifact/$dep_version"
-    dep_file="$dep_artifact-$dep_version.jar"
+    dep_jar="$dep_artifact-$dep_version.jar"
+    dep_pom="$dep_artifact-$dep_version.pom"
     info "dep_dir: $dep_dir"
-    info "dep_file: $dep_file"
 
-    if [ ! -e "$dep_dir/$dep_file" ]; then
-      info "dependency not found '$dep_dir/$dep_file'"
+    create_index $dep_pom
+
+    if [ ! -e "$dep_dir/$dep_jar" ]; then
+      info "dependency not found '$dep_dir/$dep_jar'"
       mkdir -p $dep_dir
-      download_url="https://repo1.maven.org/maven2/$dep_group_path/$dep_artifact/$dep_version/$dep_file"
-      wget -O "$dep_dir/$dep_file" "$download_url"
+      download_url="$dep_download_root/$dep_jar"
+      wget -O "$dep_dir/$dep_jar" "$download_url"
 
       if [ $? -eq 8 ]; then
         error "Dependency not found: '$download_url'"
@@ -125,7 +167,7 @@ if [ -e $dep_config ]; then
     fi
 
     if [ $optwar -eq 1 ]; then
-      cp $dep_dir/$dep_file $dep_root
+      cp $dep_dir/$dep_jar $dep_root
     fi
 
     ((index++))
@@ -136,10 +178,10 @@ fi
 
 # Compilation
 java_files=$(find src/$module/java -name *.java)
-dep_files=$(find $dep_root -type f)
-dep_files=${dep_files//$'\n'/:}
-info "dep_files: $dep_files"
-javac -d $classpath -cp "$dep_files" $java_files
+dep_jars=$(find $dep_root -type f)
+dep_jars=${dep_jars//$'\n'/:}
+info "dep_jars: $dep_jars"
+javac -d $classpath -cp "$dep_jars" $java_files
 
 resources_dir=src/$module/resources
 if [ -d $resources_dir ]; then
