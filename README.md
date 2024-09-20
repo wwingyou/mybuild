@@ -2,7 +2,7 @@
 
 This is a java build tool made for packaging project into jar or war file.
 
-I do this for understanding how java build tool like Maven and Gradle actually works in building jar and war from project sources.
+I'm doing this to understand how java build tool like Maven and Gradle actually works in building jar and war from project sources.
 
 ## JAR and WAR
 
